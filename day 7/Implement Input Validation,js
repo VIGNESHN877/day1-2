@@ -1,0 +1,151 @@
+// server.js
+const express = require('express');
+const mongoose = require('mongoose');
+const { body, validationResult, param } = require('express-validator');
+
+// Create an Express app
+const app = express();
+
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/studentDB', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Failed to connect to MongoDB:', err));
+
+// Define the Student schema
+const studentSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    age: { type: Number, required: true },
+    major: { type: String, required: true },
+    rollNo: { type: String, required: true, unique: true }, // Ensure rollNo is unique
+});
+
+// Create the Student model
+const Student = mongoose.model('Student', studentSchema);
+
+// Validation middleware for creating/updating a student
+const validateStudent = [
+    body('name').notEmpty().withMessage('Name is required').isString().withMessage('Name must be a string'),
+    body('age').notEmpty().withMessage('Age is required').isInt({ min: 1 }).withMessage('Age must be a positive integer'),
+    body('major').notEmpty().withMessage('Major is required').isString().withMessage('Major must be a string'),
+    body('rollNo').notEmpty().withMessage('rollNo is required').isString().withMessage('rollNo must be a string').isLength({ min: 5, max: 10 }).withMessage('rollNo must be between 5 and 10 characters'),
+];
+
+// Validation middleware for ID parameter
+const validateId = [
+    param('id').isMongoId().withMessage('Invalid ID format'),
+];
+
+// GET /students - Retrieve all students
+app.get('/students', async (req, res) => {
+    try {
+        const students = await Student.find();
+        res.status(200).json(students);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve students' });
+    }
+});
+
+// POST /students - Add a new student
+app.post('/students', validateStudent, async (req, res) => {
+    try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ error: 'Validation Error', message: errors.array() });
+        }
+
+        const { name, age, major, rollNo } = req.body;
+
+        // Check if a student with the same rollNo already exists
+        const existingStudent = await Student.findOne({ rollNo });
+        if (existingStudent) {
+            return res.status(409).json({ error: 'Conflict', message: 'A student with the same rollNo already exists' });
+        }
+
+        // Create a new student
+        const newStudent = new Student({ name, age, major, rollNo });
+        await newStudent.save();
+
+        // Respond with a success message and the student's ID
+        res.status(201).json({ message: 'Student added successfully', studentId: newStudent._id });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to add student' });
+    }
+});
+
+// PUT /students/:id - Update a student by ID
+app.put('/students/:id', validateId, validateStudent, async (req, res) => {
+    try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ error: 'Validation Error', message: errors.array() });
+        }
+
+        const studentId = req.params.id;
+        const { name, age, major, rollNo } = req.body;
+
+        // Find the student by ID
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ error: 'Not Found', message: 'Student not found' });
+        }
+
+        // Check if the new rollNo conflicts with another student
+        if (rollNo && rollNo !== student.rollNo) {
+            const existingStudent = await Student.findOne({ rollNo });
+            if (existingStudent) {
+                return res.status(409).json({ error: 'Conflict', message: 'A student with the same rollNo already exists' });
+            }
+        }
+
+        // Update the student document
+        if (name) student.name = name;
+        if (age) student.age = age;
+        if (major) student.major = major;
+        if (rollNo) student.rollNo = rollNo;
+
+        await student.save();
+
+        // Respond with the updated student document
+        res.status(200).json({ message: 'Student updated successfully', student });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to update student' });
+    }
+});
+
+// DELETE /students/:id - Delete a student by ID
+app.delete('/students/:id', validateId, async (req, res) => {
+    try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ error: 'Validation Error', message: errors.array() });
+        }
+
+        const studentId = req.params.id;
+
+        // Find and delete the student by ID
+        const student = await Student.findByIdAndDelete(studentId);
+        if (!student) {
+            return res.status(404).json({ error: 'Not Found', message: 'Student not found' });
+        }
+
+        // Respond with a success message and the deleted student
+        res.status(200).json({ message: 'Student deleted successfully', student });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error', message: 'Failed to delete student' });
+    }
+});
+
+// Start the server
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});

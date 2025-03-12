@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show/Hide Content</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+        .content {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        button {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Interactive Show/Hide Content</h1>
+
+    <!-- Section 1 -->
+    <button onclick="toggleContent('section1')">Show/Hide Section 1</button>
+    <div id="section1" class="content hidden">
+        <h2>Section 1</h2>
+        <p>This is the content of section 1. It will be shown or hidden when you click the button above.</p>
+    </div>
+
+    <!-- Section 2 -->
+    <button onclick="toggleContent('section2')">Show/Hide Section 2</button>
+    <div id="section2" class="content hidden">
+        <h2>Section 2</h2>
+        <p>This is the content of section 2. It will be shown or hidden when you click the button above.</p>
+    </div>
+
+    <!-- Section 3 -->
+    <button onclick="toggleContent('section3')">Show/Hide Section 3</button>
+    <div id="section3" class="content hidden">
+        <h2>Section 3</h2>
+        <p>This is the content of section 3. It will be shown or hidden when you click the button above.</p>
+    </div>
+
+    <script>
+
+        function toggleContent(sectionId) {
+            var content = document.getElementById(sectionId);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+            } else {
+                content.classList.add('hidden');
+            }
+        }
+    </script>
+
+</body>
+</html>
